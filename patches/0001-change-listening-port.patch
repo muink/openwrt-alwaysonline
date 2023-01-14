@@ -1,0 +1,47 @@
+From 02d27df1006751602ca72a70828cf40a3f9620f3 Mon Sep 17 00:00:00 2001
+From: muink <hukk1996@gmail.com>
+Date: Sat, 14 Jan 2023 11:12:51 +0100
+Subject: [PATCH 1/1] change listening port
+
+---
+ main.go | 13 +------------
+ 1 file changed, 1 insertion(+), 12 deletions(-)
+
+diff --git a/main.go b/main.go
+index b3f38b5..b07eb21 100644
+--- a/main.go
++++ b/main.go
+@@ -3,7 +3,6 @@ package main
+ import (
+ 	"flag"
+ 	"fmt"
+-	"github.com/miekg/dns"
+ 	"log"
+ 	"net"
+ 	"net/http"
+@@ -75,7 +74,7 @@ func main() {
+ 
+ 	// HTTP server setup
+ 	plainHttpServer := &http.Server{
+-		Addr:    ":80",
++		Addr:    ":8083",
+ 		Handler: loggingHandler,
+ 	}
+ 	go plainHttpServer.ListenAndServe()
+@@ -91,16 +90,6 @@ func main() {
+ 	// }
+ 	// go tlsHttpServer.ListenAndServe()
+ 
+-	// DNS TCP server setup
+-	dnsTcp1 := &dns.Server{Addr: ":53", Net: "tcp"}
+-	dnsTcp1.Handler = &dnsRequestHandler{}
+-	go dnsTcp1.ListenAndServe()
+-
+-	// DNS UDP server setup
+-	dnsUdp1 := &dns.Server{Addr: ":53", Net: "udp"}
+-	dnsUdp1.Handler = &dnsRequestHandler{}
+-	go dnsUdp1.ListenAndServe()
+-
+ 	// done
+ 	log.Println("[MAIN] Server started.")
+ 
