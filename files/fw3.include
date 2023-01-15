@@ -1,0 +1,29 @@
+#!/bin/sh
+# alwaysonline integration for firewall3
+
+IPTABLES="/usr/sbin/iptables"
+
+CONFIG_NAME='alwaysonline'
+
+$IPTABLES -t nat -N ALWAYSONLINE-PREROUTING 2>/dev/null
+
+. /lib/functions/network.sh
+
+#iptables -vS -t filter
+#iptables -vS -t nat
+
+add_intzone_rules() {
+	local int_zone="$1"
+
+	[ -z "$int_zone" ] && return
+
+	$IPTABLES -t nat -A "zone_${int_zone}_prerouting" -j ALWAYSONLINE-PREROUTING
+}
+
+lan_iface=$(uci show network|grep "device='br-lan'"|cut -f2 -d'.')
+
+for int_iface in $lan_iface; do
+	# fw3 -q network fails on sub-interfaces => map to device first
+	network_get_device int_device $int_iface
+	add_intzone_rules $(fw3 -q device "$int_device")
+done

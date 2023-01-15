@@ -60,9 +60,28 @@ define Package/$(PKG_NAME)/conffiles
 endef
 
 define Package/$(PKG_NAME)/postinst
+#!/bin/sh
+[ -x "$$(which nft)" ] && FW='fw4' || FW='fw3'
+uci -q batch <<-EOF
+	delete firewall.$(PKG_NAME)
+	set firewall.$(PKG_NAME)=include
+	set firewall.$(PKG_NAME).type=script
+	set firewall.$(PKG_NAME).path=/usr/share/$(PKG_NAME)/$$FW.include
+	commit firewall
+EOF
+if [ "$$FW" == "fw3" ]; then
+uci -q batch <<-EOF
+	set firewall.$(PKG_NAME).family=any
+	set firewall.$(PKG_NAME).reload=1
+	commit firewall
+EOF
+fi
 endef
 
 define Package/$(PKG_NAME)/prerm
+#!/bin/sh
+uci delete firewall.$(PKG_NAME)
+uci commit firewall
 endef
 
 define Package/$(PKG_NAME)/install
@@ -76,6 +95,13 @@ define Package/$(PKG_NAME)/install
 
 	$(INSTALL_DIR) $(1)/etc/config
 	$(INSTALL_CONF) ./files/config $(1)/etc/config/alwaysonline
+
+	$(INSTALL_DIR) $(1)/usr/share/$(PKG_NAME)
+	$(INSTALL_DATA) ./files/fw3.include $(1)/usr/share/$(PKG_NAME)/fw3.include
+	$(INSTALL_DATA) ./files/fw4.include $(1)/usr/share/$(PKG_NAME)/fw4.include
+
+	$(INSTALL_DIR) $(1)/usr/share/nftables.d
+	$(CP) ./files/nftables.d/* $(1)/usr/share/nftables.d/
 endef
 
 $(eval $(call GoBinPackage,$(PKG_NAME)))

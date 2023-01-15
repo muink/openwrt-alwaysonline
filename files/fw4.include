@@ -1,0 +1,8 @@
+#!/bin/sh
+# alwaysonline integration for firewall4
+
+#nft list tables
+#nft list table inet fw4
+
+/etc/init.d/alwaysonline enabled && /etc/init.d/alwaysonline reload
+exit 0
