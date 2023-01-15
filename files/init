@@ -1,7 +1,7 @@
 #!/bin/sh /etc/rc.common
 # Copyright (C) 2023 muink
 #
-# depends 
+# depends coreutils-cksum
 
 . /lib/functions.sh
 
@@ -15,6 +15,84 @@ CONFIG_NAME='alwaysonline'
 TYPEDSECTION='alwaysonline'
 DOMAINS='domain'
 
+
+# randnum <min> <max>
+randnum() {
+    local min=$1
+    local max=$[ $2 - $min + 1 ]
+    local num=$(cat /dev/urandom 2>/dev/null | head -n 8 | cksum | cut -f1 -d' ')
+    echo $[ $num % $max + $min ]
+}
+
+# subnet_format <destination variable> <subnet>
+# <subnet> format: 192.168.1.1/24
+subnet_format() {
+[ "$#" -ge 2 ] || return 1
+
+local insubnet="$2"
+local address=${insubnet%/*}
+local mlen=${insubnet#*/}
+local FULL_MASK_INT=$((0xFFFFFFFF))
+local MASK_LEN=$mlen
+local LEFT_MOVE="$(( 32 - ${MASK_LEN} ))"
+local N="$(( ${FULL_MASK_INT} << ${LEFT_MOVE} ))"
+local M1="$(( ($N & 0xFF000000) >> 24 ))"
+local M2="$(( ($N & 0x00FF0000) >> 16 ))"
+local M3="$(( ($N & 0x0000FF00) >> 8 ))"
+local M4="$((  $N & 0x000000FF ))"
+#local mask="$M1.$M2.$M3.$M4"
+local outsubnet="$(echo $(for i in $(seq 1 4); do eval "echo \$(( \$(echo $address|cut -f$i -d'.') & \$M$i ))"; done)|sed 's| |.|g')/$mlen"
+eval "$1=\$outsubnet"
+}
+
+# subnet_format6 <destination variable> <subnet6>
+# <subnet6> format: fc02:2f31:3376::345/60
+subnet_format6() {
+[ "$#" -ge 2 ] || return 1
+
+local insubnet="$2"
+local address=${insubnet%/*}
+local mlen=${insubnet#*/}
+# ipv4 suffix format
+local ipv4_suffix=$(echo ${address}|sed -En "s|.+:(\d+(\.\d+){3})$|\1|p")
+if [ -n "$ipv4_suffix" ]; then
+address=\
+$(echo $address|sed "s|$ipv4_suffix|\
+$(printf %x $(( $(echo $ipv4_suffix|cut -f1 -d'.') & 0xFF )) | sed -E 's|^(\d)$|0\1|')\
+$(printf %x $(( $(echo $ipv4_suffix|cut -f2 -d'.') & 0xFF )) | sed -E 's|^(\d)$|0\1|')\
+:\
+$(printf %x $(( $(echo $ipv4_suffix|cut -f3 -d'.') & 0xFF )) | sed -E 's|^(\d)$|0\1|')\
+$(printf %x $(( $(echo $ipv4_suffix|cut -f4 -d'.') & 0xFF )) | sed -E 's|^(\d)$|0\1|')\
+|")
+fi
+# double colon
+if [ -n "$(echo $address|grep '::')" ]; then
+local blocks=$(( 8 - $(echo $address|awk '{print gsub(/[[:xdigit:]]+/,"&")}') ))
+address=\
+$(echo $address|sed "s|::|:\
+$(for i in $(seq 1 $blocks); do echo 0:; done|tr -d '\n')\
+|")
+fi
+local HALF_MASK_INT=$((0xFFFFFFFFFFFFFFFF))
+local MASK_LEN=$mlen
+local H_MASK=$([ "$MASK_LEN" -lt  "64" ] && echo     $MASK_LEN                             || echo 64)
+local L_MASK=$([ "$MASK_LEN" -lt "128" ] && echo $(( $MASK_LEN - 64 )) | sed '/-/ s|.*|0|' || echo 64)
+local H_LEFT_MOVE=$(( 64 - $H_MASK ))
+local L_LEFT_MOVE=$(( 64 - $L_MASK ))
+local H_N="$(( (${HALF_MASK_INT} << ${H_LEFT_MOVE}) & 2#$(for i in $(seq 1 $H_MASK);do echo 1; done|tr -d '\n')$(for i in $(seq 1 $H_LEFT_MOVE);do echo 0; done|tr -d '\n') ))"
+local L_N="$(( (${HALF_MASK_INT} << ${L_LEFT_MOVE}) & 2#$(for i in $(seq 1 $L_MASK);do echo 1; done|tr -d '\n')$(for i in $(seq 1 $L_LEFT_MOVE);do echo 0; done|tr -d '\n') ))"
+local M1="$(( (($H_N & 0xFFFF000000000000) >> 48 ) & 0xFFFF ))"
+local M2="$((  ($H_N & 0x0000FFFF00000000) >> 32 ))"
+local M3="$((  ($H_N & 0x00000000FFFF0000) >> 16 ))"
+local M4="$((   $H_N & 0x000000000000FFFF  ))"
+local M5="$(( (($L_N & 0xFFFF000000000000) >> 48 ) & 0xFFFF ))"
+local M6="$((  ($L_N & 0x0000FFFF00000000) >> 32 ))"
+local M7="$((  ($L_N & 0x00000000FFFF0000) >> 16 ))"
+local M8="$((   $L_N & 0x000000000000FFFF ))"
+#local mask="$M1:$M2:$M3:$M4:$M5:$M6:$M7:$M8"
+local outsubnet="$(echo $(for i in $(seq 1 8); do eval "printf %x \$(( 0x\$(echo $address|cut -f$i -d':') & \$M$i ))"; echo ''; done)|sed 's| |:|g')/$mlen"
+eval "$1=\$(echo \$outsubnet|sed -E 's|:(0+:)+|::|')"
+}
 
 init_hosts() {
 	mkdir -p "${HOSTFILE%/*}" 2>/dev/null
@@ -50,6 +128,54 @@ done
 sed -Ei "1a$domain_list" "$HOSTFILE"
 }
 
+del_static_addr() {
+	local static_addr=$(uci show dhcp|sed -En "s|(dhcp.@host\[.+)\.name='alwaysonline'|\1|p")
+	[ -n "$static_addr" ] && uci delete $static_addr && uci commit dhcp
+}
+
+# gen_static_addr <ipaddr4 variable> <ipaddr6 variable>
+gen_static_addr() {
+[ "$#" -ge 2 ] || return 1
+
+	local lan_iface lan_subnet lan_subnet6
+
+. /lib/functions/network.sh
+
+lan_iface=$(uci show network|grep "device='br-lan'"|cut -f2 -d'.'|head -n1)
+network_get_subnet  lan_subnet  $lan_iface
+network_get_subnet6 lan_subnet6 $lan_iface
+subnet_format  lan_subnet  "$lan_subnet"
+subnet_format6 lan_subnet6 "$lan_subnet6"
+
+local max_suffix max_suffix6 used_suffix used_suffix6 free_suffix free_suffix6
+
+max_suffix=$( [ "${lan_subnet#*/}"  -le  "24" ] && echo  8 || echo $((  32 - ${lan_subnet#*/}  )) )
+max_suffix6=$([ "${lan_subnet6#*/}" -le "112" ] && echo 16 || echo $(( 128 - ${lan_subnet6#*/} )) )
+
+used_suffix=$(uci -q get network.$lan_iface.ipaddr|cut -f4 -d'.')
+used_suffix6=$(uci -q get network.$lan_iface.ip6ifaceid|sed -E 's|(.*:)*([^:]+)$|\2|')
+for i in $(seq 0 $(uci show dhcp|grep 'dhcp.@host\['|tail -n1|sed -E 's|[^\[]+\[(\d+)\].+|\1|')); do
+	used_suffix="$used_suffix $(uci -q get dhcp.@host[$i].ip|cut -f4 -d'.')"
+	used_suffix6="$used_suffix6 $(uci -q get dhcp.@host[$i].hostid)"
+done
+used_suffix="$(echo $used_suffix|sed 's|^|^|;s|$|$|;s| |$\|^|g')"
+used_suffix6="$(echo $used_suffix6|sed 's|^|^|;s|$|$|;s| |$\|^|g')"
+
+free_suffix="$(  for i in $(seq 1 $(( 2 ** $max_suffix  - 1 ))); do echo $i;               done|grep -Ev "$used_suffix" )"
+#free_suffix6="$(for i in $(seq 1 $(( 2 ** $max_suffix6 - 1 ))); do printf %x $i; echo ''; done|grep -Ev "$used_suffix6")"
+
+local rand_suffix rand_suffix6
+
+local num=$(randnum 1 $(echo "$free_suffix"|sed -n '$='))
+rand_suffix=$(( $(echo ${lan_subnet##*\.}|cut -f1 -d'/') | $(echo "$free_suffix"|sed -n "${num}p") ))
+rand_suffix6=$(( $(echo ${lan_subnet6##*:}|cut -f1 -d'/') | $(echo "$free_suffix"|sed -n "${num}p") ))
+#rand_suffix=$(( $(echo ${lan_subnet##*\.}|cut -f1 -d'/') | $(echo "$free_suffix"|sed -n "$(randnum 1 $(echo "$free_suffix"|sed -n '$='))p") ))
+#rand_suffix6=$(( $(echo ${lan_subnet6##*:}|cut -f1 -d'/') | $(echo "$free_suffix6"|sed -n "$(randnum 1 $(echo "$free_suffix6"|sed -n '$='))p") ))
+
+eval "$1=\${lan_subnet%\.*}.\$rand_suffix"
+eval "$2=\${lan_subnet6%:*}:\$rand_suffix6"
+}
+
 start_instance() {
 	procd_open_instance "$CONFIG_NAME"
 	procd_set_param command "$PROG"
@@ -60,15 +186,27 @@ start_instance() {
 }
 
 start_service() {
-	local enabled
+	local enabled ipv4addr ipv6addr
 
 	config_load "$CONFIG_NAME"
 	eval "enabled=\$CONFIG_${CONFIG_SECTIONS%% *}_enabled"
 	[ "${enabled:=0}" == "0" ] && stop_service && return 1
+	stop_service
 
-	init_hosts
-	write_hosts
+	# DNS & DHCP
+	init_hosts; write_hosts
+	del_static_addr; gen_static_addr ipv4addr ipv6addr
+	local section=$(uci add dhcp host)
+	uci -q batch <<-EOF >/dev/null
+		set dhcp.$section.name='alwaysonline'
+		set dhcp.$section.dns='1'
+		set dhcp.$section.mac='44:AE:25:26:25:26'
+		set dhcp.$section.ip="$ipv4addr"
+		set dhcp.$section.hostid="${ipv6addr##*:}"
+		commit dhcp
+	EOF
 	/etc/init.d/dnsmasq reload
+	# HTTP
 	start_instance
 }
 
@@ -77,6 +215,8 @@ service_triggers() {
 }
 
 stop_service() {
+	# DNS & DHCP
 	init_hosts
+	del_static_addr
 	/etc/init.d/dnsmasq reload
 }
