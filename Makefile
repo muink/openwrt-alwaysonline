@@ -75,8 +75,6 @@ uci -q batch <<-EOF
 	set firewall.$(PKG_NAME).reload=1
 	commit firewall
 EOF
-opkg update
-opkg install ip6tables-mod-nat
 fi
 endef
 

@@ -72,8 +72,9 @@ local H_MASK=$([ "$MASK_LEN" -lt  "64" ] && echo     $MASK_LEN                  
 local L_MASK=$([ "$MASK_LEN" -lt "128" ] && echo $(( $MASK_LEN - 64 )) | sed '/-/ s|.*|0|' || echo 64)
 local H_LEFT_MOVE=$(( 64 - $H_MASK ))
 local L_LEFT_MOVE=$(( 64 - $L_MASK ))
-local H_N="$(( (${HALF_MASK_INT} << ${H_LEFT_MOVE}) & 2#$(for i in $(seq 1 $H_MASK);do echo 1; done|tr -d '\n')$(for i in $(seq 1 $H_LEFT_MOVE);do echo 0; done|tr -d '\n') ))"
-local L_N="$(( (${HALF_MASK_INT} << ${L_LEFT_MOVE}) & 2#$(for i in $(seq 1 $L_MASK);do echo 1; done|tr -d '\n')$(for i in $(seq 1 $L_LEFT_MOVE);do echo 0; done|tr -d '\n') ))"
+local H_N L_N
+[ "${H_LEFT_MOVE}" -eq "64" ] && H_N=0 || H_N="$(( ${HALF_MASK_INT} << ${H_LEFT_MOVE} ))"
+[ "${L_LEFT_MOVE}" -eq "64" ] && L_N=0 || L_N="$(( ${HALF_MASK_INT} << ${L_LEFT_MOVE} ))"
 local M1="$(( (($H_N & 0xFFFF000000000000) >> 48 ) & 0xFFFF ))"
 local M2="$((  ($H_N & 0x0000FFFF00000000) >> 32 ))"
 local M3="$((  ($H_N & 0x00000000FFFF0000) >> 16 ))"
@@ -92,14 +93,14 @@ init_hosts() {
 	echo "# auto-generated config file from /etc/config/alwaysonline" > "${HOSTFILE}"
 }
 
+# write_hosts <fake_ip4> <fake_ip6>
 write_hosts() {
+	[ "$#" -ge 2 ] || return 0
+	local _fake_ip4="$1" && shift
+	local _fake_ip6="$1" && shift
+
 	local count=$(uci show $CONFIG_NAME|grep "$DOMAINS"|tail -n1|sed -En "s|.+@.+\[(.+)\].+|\1|p")
-	local domain_list lan_addr4 lan_addr6
-
-. /lib/functions/network.sh
-
-network_get_ipaddr  lan_addr4 $(uci show network|grep "device='br-lan'"|cut -f2 -d'.'|head -n1)
-network_get_ipaddr6 lan_addr6 $(uci show network|grep "device='br-lan'"|cut -f2 -d'.'|head -n1)
+	local domain_list
 
 for i in $(seq 0 1 $count); do
 	[ "$(uci -q get $CONFIG_NAME.@$DOMAINS[$i].enabled)" == "0" ] && continue
@@ -112,7 +113,7 @@ for i in $(seq 0 1 $count); do
 	[ "$family" == "both" ] && familys="4 6" || familys="$family"
 
 for v in $familys; do
-	eval "domain_list=\"\${domain_list}\${overwrite:-\$lan_addr$v} \${name}\n\""
+	eval "domain_list=\"\${domain_list}\${overwrite:-\$_fake_ip$v} \${name}\n\""
 done
 
 done
@@ -156,7 +157,25 @@ case "$FW" in
 esac
 }
 
+check_ip6_nat() {
+ip6tables -S -t nat >/dev/null 2>&1
+if [ ! "$?" == "0" ]; then
+	opkg update
+	opkg install ip6tables-mod-nat || {
+		>&2 echo "depend 'ip6tables-mod-nat' installation failed, please try again or install manually."
+		return 1
+	}
+fi
+}
+
 start_instance() {
+	if   [ "$FW" == "fw4" ]; then
+		nft -s -t -n list chain inet fw4 alwaysonline_prerouting >/dev/null 2>&1 || fw4 reload
+	elif [ "$FW" == "fw3" ]; then
+		iptables  -t nat -L ALWAYSONLINE-PREROUTING >/dev/null 2>&1 || fw3 reload
+		ip6tables -t nat -L ALWAYSONLINE-PREROUTING >/dev/null 2>&1 || fw3 reload
+	fi
+
 	procd_open_instance "$CONFIG_NAME"
 	procd_set_param command "$PROG"
 	procd_set_param respawn
@@ -174,9 +193,11 @@ start_service() {
 	stop_service
 
 	# DNS
-	write_hosts
+	write_hosts '192.0.2.26' '2001:db8::254:26'
 	/etc/init.d/dnsmasq reload
 	# Forward
+	[ "$FW" == "fw3" -a -x /usr/sbin/ip6tables ] && check_ip6_nat
+	[ "$?" == "0" ] || return 1
 	write_fw_rule '192.0.2.26' '2001:db8::254:26' '8083'
 	# HTTP
 	start_instance
