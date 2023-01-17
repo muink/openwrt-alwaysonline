@@ -5,110 +5,110 @@ config alwaysonline
 config domain
 	option name 'www.msftncsi.com'
 	option group 'windows'
-	option net_proto 'both'
+	option family 'both'
 	option enabled '1'
 
 config domain
 	option name 'ipv6.msftncsi.com'
 	option group 'windows'
-	option net_proto '6'
+	option family '6'
 	option enabled '1'
 
 config domain
 	option name 'www.msftconnecttest.com'
 	option group 'windows'
-	option net_proto 'both'
+	option family 'both'
 	option enabled '1'
 
 config domain
 	option name 'ipv6.msftconnecttest.com'
 	option group 'windows'
-	option net_proto '6'
+	option family '6'
 	option enabled '1'
 
 config domain
 	option name 'dns.msftncsi.com'
 	option group 'windows'
-	option net_proto '4'
+	option family '4'
 	option overwrite '131.107.255.255'
 	option enabled '1'
 
 config domain
 	option name 'dns.msftncsi.com'
 	option group 'windows'
-	option net_proto '6'
+	option family '6'
 	option overwrite 'fd3e:4f5a:5b81::1'
 	option enabled '1'
 
 config domain
 	option name 'captive.apple.com'
 	option group 'apple'
-	option net_proto 'both'
+	option family 'both'
 	option enabled '1'
 
 config domain
 	option name 'clients3.google.com'
 	option group 'android'
-	option net_proto 'both'
+	option family 'both'
 	option enabled '1'
 
 config domain
 	option name 'connectivitycheck.gstatic.com'
 	option group 'android'
-	option net_proto 'both'
+	option family 'both'
 	option enabled '1'
 
 config domain
 	option name 'connectivitycheck.android.com'
 	option group 'android'
-	option net_proto 'both'
+	option family 'both'
 	option enabled '1'
 
 config domain
 	option name 'connect.rom.miui.com'
 	option group 'android'
-	option net_proto 'both'
+	option family 'both'
 	option enabled '1'
 
 config domain
 	option name 'connectivitycheck.platform.hicloud.com'
 	option group 'android'
-	option net_proto 'both'
+	option family 'both'
 	option enabled '1'
 
 config domain
 	option name 'network-test.debian.org'
 	option group 'linux'
-	option net_proto 'both'
+	option family 'both'
 	option enabled '1'
 
 config domain
 	option name 'nmcheck.gnome.org'
 	option group 'linux'
-	option net_proto 'both'
+	option family 'both'
 	option enabled '1'
 
 config domain
 	option name 'www.archlinux.org'
 	option group 'linux'
-	option net_proto 'both'
+	option family 'both'
 	option enabled '1'
 
 config domain
 	option name 'detectportal.firefox.com'
 	option group 'linux'
-	option net_proto 'both'
+	option family 'both'
 	option enabled '1'
 
 config domain
 	option name 'start.ubuntu.com'
 	option group 'linux'
-	option net_proto 'both'
+	option family 'both'
 	option enabled '1'
 
 config domain
 	option name 'capnet.elementary.io'
 	option group 'linux'
-	option net_proto 'both'
+	option family 'both'
 	option enabled '1'
 

@@ -104,15 +104,15 @@ network_get_ipaddr6 lan_addr6 $(uci show network|grep "device='br-lan'"|cut -f2 
 for i in $(seq 0 1 $count); do
 	[ "$(uci -q get $CONFIG_NAME.@$DOMAINS[$i].enabled)" == "0" ] && continue
 
-	local ucivv="name group net_proto overwrite"
+	local ucivv="name group family overwrite"
 	for _var in $ucivv; do
 		eval "local $_var=\$(uci -q get $CONFIG_NAME.@$DOMAINS[$i].$_var)"
 	done
-	local net_protocols
-	[ "$net_proto" == "both" ] && net_protocols="4 6" || net_protocols="$net_proto"
+	local familys
+	[ "$family" == "both" ] && familys="4 6" || familys="$family"
 
-for proto in $net_protocols; do
-	eval "domain_list=\"\${domain_list}\${overwrite:-\$lan_addr$proto} \${name}\n\""
+for v in $familys; do
+	eval "domain_list=\"\${domain_list}\${overwrite:-\$lan_addr$v} \${name}\n\""
 done
 
 done
