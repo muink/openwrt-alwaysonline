@@ -2,10 +2,14 @@
 # alwaysonline integration for firewall3
 
 IPTABLES="/usr/sbin/iptables"
+IP6TABLES="/usr/sbin/ip6tables"
 
 CONFIG_NAME='alwaysonline'
 
 $IPTABLES -t nat -N ALWAYSONLINE-PREROUTING 2>/dev/null
+[ -x $IP6TABLES ] && {
+	$IP6TABLES -t nat -N ALWAYSONLINE-PREROUTING 2>/dev/null
+}
 
 . /lib/functions/network.sh
 
@@ -18,6 +22,9 @@ add_intzone_rules() {
 	[ -z "$int_zone" ] && return
 
 	$IPTABLES -t nat -A "zone_${int_zone}_prerouting" -j ALWAYSONLINE-PREROUTING
+	[ -x $IP6TABLES ] && {
+		$IP6TABLES -t nat -A PREROUTING -i br-lan -j ALWAYSONLINE-PREROUTING
+	}
 }
 
 lan_iface=$(uci show network|grep "device='br-lan'"|cut -f2 -d'.')
