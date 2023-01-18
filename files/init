@@ -65,6 +65,7 @@ address=\
 $(echo $address|sed "s|::|:\
 $(for i in $(seq 1 $blocks); do echo 0:; done|tr -d '\n')\
 |")
+address=${address#:}; address=${address%:}
 fi
 local HALF_MASK_INT=$((0xFFFFFFFFFFFFFFFF))
 local MASK_LEN=$mlen
@@ -85,7 +86,7 @@ local M7="$((  ($L_N & 0x00000000FFFF0000) >> 16 ))"
 local M8="$((   $L_N & 0x000000000000FFFF ))"
 #local mask="$M1:$M2:$M3:$M4:$M5:$M6:$M7:$M8"
 local outsubnet="$(echo $(for i in $(seq 1 8); do eval "printf %x \$(( 0x\$(echo $address|cut -f$i -d':') & \$M$i ))"; echo ''; done)|sed 's| |:|g')/$mlen"
-eval "$1=\$(echo \$outsubnet|sed -E 's|:(0+:)+|::|')"
+eval "$1=\$(echo \$outsubnet|sed -E 's|:(0+:)+|::|;s|^0::|::|;s|::0/|::/|')"
 }
 
 init_hosts() {
