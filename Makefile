@@ -91,10 +91,10 @@ define Package/$(PKG_NAME)/install
 	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/bin/$(PKG_NAME) $(1)/usr/sbin/
 
 	$(INSTALL_DIR) $(1)/etc/init.d
-	$(INSTALL_BIN) ./files/init $(1)/etc/init.d/alwaysonline
+	$(INSTALL_BIN) ./files/$(PKG_NAME).init $(1)/etc/init.d/alwaysonline
 
 	$(INSTALL_DIR) $(1)/etc/config
-	$(INSTALL_CONF) ./files/config $(1)/etc/config/alwaysonline
+	$(INSTALL_CONF) ./files/$(PKG_NAME).config $(1)/etc/config/alwaysonline
 
 	$(INSTALL_DIR) $(1)/usr/share/$(PKG_NAME)
 	$(INSTALL_DATA) ./files/fw3.include $(1)/usr/share/$(PKG_NAME)/fw3.include
