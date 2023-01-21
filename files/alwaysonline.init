@@ -163,6 +163,7 @@ start_instance() {
 
 	procd_open_instance "$CONFIG_NAME"
 	procd_set_param command "$PROG"
+	procd_append_param netdev "br-lan"
 	procd_set_param respawn
 	procd_set_param user nobody
 	procd_set_param stderr 1
@@ -187,7 +188,10 @@ start_service() {
 }
 
 service_triggers() {
-	procd_add_reload_trigger "$CONFIG_NAME"
+	procd_add_reload_trigger "$CONFIG_NAME" 'network' 'firewall'
+
+	local iface=$(uci show network|grep "device='br-lan'"|cut -f2 -d'.'|head -n1)
+	[ -n "$iface" ] && procd_add_interface_trigger "interface.*.up" "$iface" /etc/init.d/alwaysonline reload
 }
 
 stop_service() {

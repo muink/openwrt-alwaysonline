@@ -24,6 +24,8 @@ lan_iface=$(uci show network|grep "device='br-lan'"|cut -f2 -d'.')
 
 for int_iface in $lan_iface; do
 	# fw3 -q network fails on sub-interfaces => map to device first
-	network_get_device int_device $int_iface
+	network_get_device int_device "$int_iface"
+	[ -z "$int_device" ] && network_get_physdev int_device "$int_iface"
+	[ -z "$int_device" ] && continue
 	add_intzone_rules $(fw3 -q device "$int_device")
 done
