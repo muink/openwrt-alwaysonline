@@ -201,3 +201,7 @@ stop_service() {
 		iptables -t nat -F ALWAYSONLINE-PREROUTING 2>/dev/null
 	fi
 }
+
+restart() {
+	start
+}
