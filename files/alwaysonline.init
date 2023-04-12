@@ -3,7 +3,7 @@
 #
 # depends 
 
-. /lib/functions.sh
+. "${IPKG_INSTROOT}/lib/functions.sh"
 
 START=99
 USE_PROCD=1
