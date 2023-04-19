@@ -16,6 +16,8 @@ CONFIG_NAME='alwaysonline'
 TYPEDSECTION='alwaysonline'
 DOMAINS='domain'
 
+config_load "$CONFIG_NAME"
+
 
 # subnet_format <destination variable> <subnet>
 # <subnet> format: 192.168.1.1/24
@@ -100,16 +102,16 @@ write_hosts() {
 	local _fake_ip4="$1" && shift
 	local _fake_ip6="$1" && shift
 
-	local count=$(uci show $CONFIG_NAME|grep "$DOMAINS"|tail -n1|sed -En "s|.+@.+\[(.+)\].+|\1|p")
+#	local count=$(uci show $CONFIG_NAME|grep "$DOMAINS"|tail -n1|sed -En "s|.+@.+\[(.+)\].+|\1|p")
 	local domain_list
 
-for i in $(seq 0 1 $count); do
-	[ "$(uci -q get $CONFIG_NAME.@$DOMAINS[$i].enabled)" == "0" ] && continue
+#for i in $(seq 0 1 $count); do
+#	[ "$(uci -q get $CONFIG_NAME.@$DOMAINS[$i].enabled)" == "0" ] && continue
 
-	local ucivv="name group family overwrite"
-	for _var in $ucivv; do
-		eval "local $_var=\$(uci -q get $CONFIG_NAME.@$DOMAINS[$i].$_var)"
-	done
+#	local ucivv="name group family overwrite"
+#	for _var in $ucivv; do
+#		eval "local $_var=\$(uci -q get $CONFIG_NAME.@$DOMAINS[$i].$_var)"
+#	done
 	local familys
 	[ "$family" == "both" ] && familys="4 6" || familys="$family"
 
@@ -173,7 +175,6 @@ start_instance() {
 start_service() {
 	local enabled
 
-	config_load "$CONFIG_NAME"
 	eval "enabled=\$CONFIG_${CONFIG_SECTIONS%% *}_enabled"
 	[ "${enabled:=0}" == "0" ] && stop_service && return 1
 	stop_service
