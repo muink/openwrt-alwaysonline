@@ -179,7 +179,7 @@ start_service() {
 
 	# DNS
 	local domain_list=''
-	config_foreach validate_section_domain "$DOMAINS" gen_hosts
+	config_foreach validate_section_domain "$DOMAINS" gen_hosts || return $?
 	sed -Ei "1a$domain_list" "$HOSTFILE"
 	/etc/init.d/dnsmasq reload
 	# Forward
