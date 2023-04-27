@@ -9,7 +9,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=alwaysonline
 PKG_VERSION=1.2.0
-PKG_RELEASE:=20230421
+PKG_RELEASE:=20230427
 
 PKG_MAINTAINER:=muink <hukk1996@gmail.com>
 PKG_LICENSE:=MIT
@@ -47,7 +47,7 @@ define Package/$(PKG_NAME)
   SUBMENU:=Web Servers/Proxies
   TITLE:=Hijack/bypass Windows NCSI and iOS portal detection on a network level.
   URL:=https://github.com/Jamesits/alwaysonline
-  DEPENDS:=$(GO_ARCH_DEPENDS)
+  DEPENDS:=$(GO_ARCH_DEPENDS) +nginx
   USERID:=alwaysonline:alwaysonline
 endef
 
@@ -63,9 +63,6 @@ define Package/$(PKG_NAME)/postinst
 endef
 
 define Package/$(PKG_NAME)/prerm
-#!/bin/sh
-uci delete firewall.$(PKG_NAME)
-uci commit firewall
 endef
 
 define Package/$(PKG_NAME)/install
@@ -80,15 +77,9 @@ define Package/$(PKG_NAME)/install
 	$(INSTALL_DIR) $(1)/etc/config
 	$(INSTALL_CONF) ./files/$(PKG_NAME).config $(1)/etc/config/alwaysonline
 
-	$(INSTALL_DIR) $(1)/etc/uci-defaults
-	$(INSTALL_BIN) ./files/uci-defaults $(1)/etc/uci-defaults/99_$(PKG_NAME)
-
-	$(INSTALL_DIR) $(1)/usr/share/$(PKG_NAME)
-	$(INSTALL_DATA) ./files/fw3.include $(1)/usr/share/$(PKG_NAME)/fw3.include
-	$(INSTALL_DATA) ./files/fw4.include $(1)/usr/share/$(PKG_NAME)/fw4.include
-
-	$(INSTALL_DIR) $(1)/usr/share/nftables.d
-	$(CP) ./files/nftables.d/* $(1)/usr/share/nftables.d/
+	$(INSTALL_DIR) $(1)/etc/nginx/conf.d/alwaysonline
+	$(INSTALL_DATA) ./files/$(PKG_NAME).locations $(1)/etc/nginx/conf.d/alwaysonline/alwaysonline.locations
+	$(LN) /var/etc/nginx/conf.d/alwaysonline.conf $(1)/etc/nginx/conf.d/alwaysonline.conf
 endef
 
 $(eval $(call GoBinPackage,$(PKG_NAME)))
