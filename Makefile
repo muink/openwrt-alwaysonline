@@ -9,7 +9,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=alwaysonline
 PKG_VERSION=1.2.0
-PKG_RELEASE:=20230428
+PKG_RELEASE:=20230431
 
 PKG_MAINTAINER:=muink <hukk1996@gmail.com>
 PKG_LICENSE:=MIT
@@ -56,16 +56,17 @@ define Package/$(PKG_NAME)-firewall
   $(call Package/$(PKG_NAME)/Default)
   TITLE+= (firewall)
   VARIANT:=firewall
+  # ref: https://github.com/openwrt/packages/blob/10986d56c9fcdd093be0495d6e7a02e7f5f3141e/mail/exim/Makefile#L57
   CONFLICTS:=$(PKG_NAME)-nginx
+  # ref: https://github.com/openwrt/openwrt/blob/cf8d861978dbfdb572a25db460db464b50d9e809/package/libs/ustream-ssl/Makefile#L50
+  DEFAULT_VARIANT:=1
 endef
 
 define Package/$(PKG_NAME)-nginx
   $(call Package/$(PKG_NAME)/Default)
-  DEPENDS+= nginx
   TITLE+= (nginx)
   VARIANT:=nginx
-  DEFAULT_VARIANT:=1
-  CONFLICTS:=$(PKG_NAME)-firewall
+  DEPENDS+= nginx
 endef
 
 define Package/$(PKG_NAME)/description/Default
