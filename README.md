@@ -6,6 +6,9 @@ openwrt-alwaysonline
 ## Introduction
 This project is the software package of [alwaysonline][] running on OpenWrt
 
+## Releases
+You can find the prebuilt-ipks [here](https://fantastic-packages.github.io/packages/)
+
 ## Build
 
 ```shell
