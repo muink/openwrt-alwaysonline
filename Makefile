@@ -9,7 +9,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=alwaysonline
 PKG_VERSION=1.2.0
-PKG_RELEASE:=20230431
+PKG_RELEASE:=20230520
 
 PKG_MAINTAINER:=muink <hukk1996@gmail.com>
 PKG_LICENSE:=MIT
@@ -41,47 +41,49 @@ GO_PKG_LDFLAGS_X:=\
 include $(INCLUDE_DIR)/package.mk
 include $(TOPDIR)/feeds/packages/lang/golang/golang-package.mk
 
-define Package/$(PKG_NAME)/Default
+define Package/$(PKG_NAME)
   SECTION:=net
   CATEGORY:=Network
   SUBMENU:=Web Servers/Proxies
   TITLE:=Hijack/bypass Windows NCSI and iOS portal detection on a network level.
   URL:=https://github.com/Jamesits/alwaysonline
   DEPENDS:=$(GO_ARCH_DEPENDS)
-  PROVIDES:=alwaysonline
+endef
+
+define Package/$(PKG_NAME)/description
+  AlwaysOnline is a HTTP and DNS server which mocks a lot network/internet/portal detection servers.
+endef
+
+define Package/$(PKG_NAME)/Default
+  SECTION:=net
+  CATEGORY:=Network
+  SUBMENU:=Web Servers/Proxies
+  TITLE:=alwaysonline uci metapackage ($(1))
+  DEPENDS:=+alwaysonline
   USERID:=alwaysonline:alwaysonline
+  PROVIDES:=uci-$(PKG_NAME)
+  VARIANT:=$(1)
 endef
 
 define Package/$(PKG_NAME)-firewall
-  $(call Package/$(PKG_NAME)/Default)
-  TITLE+= (firewall)
-  VARIANT:=firewall
+  $(call Package/$(PKG_NAME)/Default,firewall)
+  # ref: https://github.com/openwrt/packages/blob/4a7822604ad3cadb0461c5969bbf07b18a046834/admin/zabbix/Makefile#L67
+  DEFAULT_VARIANT:=1
   # ref: https://github.com/openwrt/packages/blob/10986d56c9fcdd093be0495d6e7a02e7f5f3141e/mail/exim/Makefile#L57
   CONFLICTS:=$(PKG_NAME)-nginx
-  # ref: https://github.com/openwrt/openwrt/blob/cf8d861978dbfdb572a25db460db464b50d9e809/package/libs/ustream-ssl/Makefile#L50
-  DEFAULT_VARIANT:=1
 endef
 
 define Package/$(PKG_NAME)-nginx
-  $(call Package/$(PKG_NAME)/Default)
-  TITLE+= (nginx)
-  VARIANT:=nginx
+  $(call Package/$(PKG_NAME)/Default,nginx)
   DEPENDS+= nginx
 endef
 
 define Package/$(PKG_NAME)/description/Default
-  AlwaysOnline is a HTTP and DNS server which mocks a lot network/internet/portal detection servers.
+  This variant of the alwaysonline package is based on the $(1).
 endef
 
-define Package/$(PKG_NAME)-firewall/description
-  $(call Package/$(PKG_NAME)/description/Default)
-  This variant of the alwaysonline package is based on the iptables/nftables.
-endef
-
-define Package/$(PKG_NAME)-nginx/description
-  $(call Package/$(PKG_NAME)/description/Default)
-  This variant of the alwaysonline package is based on the nginx.
-endef
+Package/$(PKG_NAME)-firewall/description = $(Package/$(PKG_NAME)/description/Default,'iptables/nftables')
+Package/$(PKG_NAME)-nginx/description = $(Package/$(PKG_NAME)/description/Default,nginx)
 
 define Package/$(PKG_NAME)/conffiles/Default
 /etc/config/alwaysonline
@@ -96,21 +98,23 @@ uci delete firewall.$(PKG_NAME)
 uci commit firewall
 endef
 
-define Package/$(PKG_NAME)/install/Default
+define Package/$(PKG_NAME)/install
 	$(call GoPackage/Package/Install/Bin,$(PKG_INSTALL_DIR))
 
 	$(INSTALL_DIR) $(1)/usr/sbin
 	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/bin/$(PKG_NAME) $(1)/usr/sbin/
+endef
 
+define Package/$(PKG_NAME)/install/Default
 	$(INSTALL_DIR) $(1)/etc/config
 	$(INSTALL_CONF) ./files/$(PKG_NAME).config $(1)/etc/config/alwaysonline
+
+	$(INSTALL_DIR) $(1)/etc/init.d
+	$(INSTALL_BIN) ./files/$(PKG_NAME).$(2).init $(1)/etc/init.d/alwaysonline
 endef
 
 define Package/$(PKG_NAME)-firewall/install
-	$(call Package/$(PKG_NAME)/install/Default, $(1))
-
-	$(INSTALL_DIR) $(1)/etc/init.d
-	$(INSTALL_BIN) ./files/$(PKG_NAME).firewall.init $(1)/etc/init.d/alwaysonline
+	$(call Package/$(PKG_NAME)/install/Default, $(1),firewall)
 
 	$(INSTALL_DIR) $(1)/etc/uci-defaults
 	$(INSTALL_BIN) ./files/uci-defaults $(1)/etc/uci-defaults/99_$(PKG_NAME)
@@ -124,10 +128,7 @@ define Package/$(PKG_NAME)-firewall/install
 endef
 
 define Package/$(PKG_NAME)-nginx/install
-	$(call Package/$(PKG_NAME)/install/Default, $(1))
-
-	$(INSTALL_DIR) $(1)/etc/init.d
-	$(INSTALL_BIN) ./files/$(PKG_NAME).nginx.init $(1)/etc/init.d/alwaysonline
+	$(call Package/$(PKG_NAME)/install/Default, $(1),nginx)
 
 	$(INSTALL_DIR) $(1)/etc/nginx/conf.d/alwaysonline
 	$(INSTALL_DATA) ./files/$(PKG_NAME).locations $(1)/etc/nginx/conf.d/alwaysonline/alwaysonline.locations
@@ -135,5 +136,6 @@ define Package/$(PKG_NAME)-nginx/install
 endef
 
 $(eval $(call GoBinPackage,$(PKG_NAME)))
+$(eval $(call BuildPackage,$(PKG_NAME)))
 $(eval $(call BuildPackage,$(PKG_NAME)-firewall))
 $(eval $(call BuildPackage,$(PKG_NAME)-nginx))
