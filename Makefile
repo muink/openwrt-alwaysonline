@@ -50,11 +50,13 @@ define Package/$(PKG_NAME)/Default
   DEPENDS:=$(GO_ARCH_DEPENDS)
   USERID:=alwaysonline:alwaysonline
   PROVIDES:=$(PKG_NAME)
-  VARIANT:=nodns
+  VARIANT:=$(1)
   DEFAULT_VARIANT:=1
 endef
 
-Package/$(PKG_NAME) = $(Package/$(PKG_NAME)/Default)
+define Package/$(PKG_NAME)
+  $(call Package/$(PKG_NAME)/Default,nodns)
+endef
 
 define Package/$(PKG_NAME)/description/Default
   AlwaysOnline is a HTTP and DNS server which mocks a lot network/internet/portal detection servers.
@@ -99,8 +101,13 @@ define Package/uci-$(PKG_NAME)/description/Default
   This variant of the alwaysonline package is based on the $(1).
 endef
 
-Package/uci-$(PKG_NAME)/description = $(Package/uci-$(PKG_NAME)/description/Default,iptables/nftables)
-Package/uci-$(PKG_NAME)-nginx/description = $(Package/uci-$(PKG_NAME)/description/Default,nginx)
+define Package/uci-$(PKG_NAME)/description
+  $(call Package/uci-$(PKG_NAME)/description/Default,iptables/nftables)
+endef
+
+define Package/uci-$(PKG_NAME)-nginx/description
+  $(call Package/uci-$(PKG_NAME)/description/Default,nginx)
+endef
 
 define Package/uci-$(PKG_NAME)/conffiles/Default
 /etc/config/alwaysonline
