@@ -4,6 +4,7 @@
 # depends 
 
 . "${IPKG_INSTROOT}/lib/functions.sh"
+. "${IPKG_INSTROOT}/lib/functions/network.sh"
 
 START=99
 USE_PROCD=1
@@ -21,6 +22,16 @@ DOMAINS='domain'
 
 config_load "$CONFIG_NAME"
 
+
+# define global var: NIC_br_lan
+define_nic() {
+	# get br-lan NICs
+	local dev='br-lan'
+	network_get_subnet NIC_${dev//-/_} $(uci show network|grep "device='$dev'"|cut -f2 -d'.'|head -1) # NIC_br_lan=192.168.1.1/24
+
+	return 0
+}
+define_nic
 
 validate_section_domain() {
 	uci_load_validate $CONFIG_NAME $DOMAINS "$1" "$2" \
@@ -123,6 +134,14 @@ for v in $familys; do
 done
 }
 
+clean_fw_rules() {
+	if   [ "$FW" == "fw4" ]; then
+		nft flush chain inet fw4 alwaysonline_prerouting 2>/dev/null
+	elif [ "$FW" == "fw3" ]; then
+		iptables -t nat -F ALWAYSONLINE-PREROUTING 2>/dev/null
+	fi
+}
+
 # write_fw_rule <fake_ip4> <server_port>
 write_fw_rule() {
 	[ "$#" -ge 1 ] || return 0
@@ -131,18 +150,11 @@ write_fw_rule() {
 	local _bind_port='80'
 	local _proto='tcp'
 
-. /lib/functions/network.sh
 # iptables  -t nat -F ALWAYSONLINE-PREROUTING
 # nft add chain inet fw4 alwaysonline_prerouting {}
-local lan_addr lan_subnet #lan_addr6 lan_subnet6
-
-network_get_ipaddr lan_addr $(uci show network|grep "device='br-lan'"|cut -f2 -d'.'|head -n1)
-network_get_subnet lan_subnet $(uci show network|grep "device='br-lan'"|cut -f2 -d'.'|head -n1)
-subnet_format lan_subnet "$lan_subnet"
-
-#network_get_ipaddr6 lan_addr6 $(uci show network|grep "device='br-lan'"|cut -f2 -d'.'|head -n1)
-#network_get_subnet6 lan_subnet6 $(uci show network|grep "device='br-lan'"|cut -f2 -d'.'|head -n1)
-#subnet_format6 lan_subnet6 "$lan_subnet6"
+local lan='br-lan' lan_addr lan_subnet
+eval "lan_addr=\"\${NIC_${lan//-/_}%/*}\""
+eval "subnet_format lan_subnet \"\${NIC_${lan//-/_}}\""
 
 case "$FW" in
 	fw4)
@@ -173,9 +185,9 @@ start_instance() {
 start_service() {
 	local enabled
 
-	eval "enabled=\$CONFIG_${CONFIG_SECTIONS%% *}_enabled"
-	[ "${enabled:=0}" == "0" ] && stop_service && return 1
 	stop_service
+	eval "enabled=\$CONFIG_${CONFIG_SECTIONS%% *}_enabled"
+	[ "${enabled:=0}" == "0" ] && return 1
 
 	# DNS
 	local domain_list=''
@@ -200,11 +212,8 @@ stop_service() {
 	init_hosts
 	/etc/init.d/dnsmasq reload
 	# Forward
-	if   [ "$FW" == "fw4" ]; then
-		nft flush chain inet fw4 alwaysonline_prerouting 2>/dev/null
-	elif [ "$FW" == "fw3" ]; then
-		iptables -t nat -F ALWAYSONLINE-PREROUTING 2>/dev/null
-	fi
+	clean_fw_rules
+	return 0
 }
 
 restart() {
