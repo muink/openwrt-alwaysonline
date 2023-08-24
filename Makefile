@@ -9,7 +9,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=alwaysonline
 PKG_VERSION=1.2.0
-PKG_RELEASE:=20230526
+PKG_RELEASE:=20230824
 
 PKG_MAINTAINER:=muink <hukk1996@gmail.com>
 PKG_LICENSE:=MIT
@@ -118,7 +118,7 @@ Package/uci-$(PKG_NAME)-nginx/conffiles = $(Package/uci-$(PKG_NAME)/conffiles/De
 
 define Package/uci-$(PKG_NAME)/prerm
 #!/bin/sh
-uci delete firewall.$(PKG_NAME)
+uci -q delete firewall.$(PKG_NAME)
 uci commit firewall
 endef
 
@@ -132,16 +132,6 @@ endef
 
 define Package/uci-$(PKG_NAME)/install
 	$(call Package/uci-$(PKG_NAME)/install/Default,$(1),firewall)
-
-	$(INSTALL_DIR) $(1)/etc/uci-defaults
-	$(INSTALL_BIN) ./files/uci-defaults $(1)/etc/uci-defaults/99_$(PKG_NAME)
-
-	$(INSTALL_DIR) $(1)/usr/share/$(PKG_NAME)
-	$(INSTALL_DATA) ./files/fw3.include $(1)/usr/share/$(PKG_NAME)/fw3.include
-	$(INSTALL_DATA) ./files/fw4.include $(1)/usr/share/$(PKG_NAME)/fw4.include
-
-	$(INSTALL_DIR) $(1)/usr/share/nftables.d
-	$(CP) ./files/nftables.d/* $(1)/usr/share/nftables.d/
 endef
 
 define Package/uci-$(PKG_NAME)-nginx/install

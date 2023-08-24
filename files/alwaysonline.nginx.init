@@ -3,7 +3,6 @@
 #
 # depends 
 
-. "${IPKG_INSTROOT}/lib/functions.sh"
 . "${IPKG_INSTROOT}/lib/functions/network.sh"
 
 START=99
@@ -106,7 +105,7 @@ service_triggers() {
 	procd_add_reload_trigger "$CONFIG_NAME" 'network'
 
 	local iface=$(uci show network|grep "device='br-lan'"|cut -f2 -d'.'|head -n1)
-	[ -n "$iface" ] && procd_add_interface_trigger "interface.*.up" "$iface" /etc/init.d/alwaysonline reload
+	[ -n "$iface" ] && procd_add_reload_interface_trigger "$iface"
 }
 
 stop_service() {
