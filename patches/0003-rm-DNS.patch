@@ -1,7 +1,7 @@
-From c45a91a0bdad7a51242e78ae7b480dee2607837e Mon Sep 17 00:00:00 2001
+From 5555a68d285a4222cbe892096bfb741fd746bb50 Mon Sep 17 00:00:00 2001
 From: muink <hukk1996@gmail.com>
 Date: Tue, 17 Jan 2023 12:41:00 +0100
-Subject: [PATCH 1/1] rm DNS
+Subject: [PATCH 3/3] rm DNS
 
 ---
  dns_server.go          | 98 ------------------------------------------
