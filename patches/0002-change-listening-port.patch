@@ -1,7 +1,7 @@
-From 7e35a5bfeec05e8b7683aa4438fd0c30b516fd14 Mon Sep 17 00:00:00 2001
+From 73d34c4a8bde75039fccc1bb8d249b1f3f829cc6 Mon Sep 17 00:00:00 2001
 From: muink <hukk1996@gmail.com>
 Date: Sat, 14 Jan 2023 11:12:51 +0100
-Subject: [PATCH 2/3] change listening port
+Subject: [PATCH 1/2] change listening port
 
 ---
  main.go | 13 +------------
