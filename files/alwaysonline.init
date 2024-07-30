@@ -20,6 +20,25 @@ DOMAINS='domain'
 config_load "$CONFIG_NAME"
 
 
+find_op_ifnames() {
+	local ifnames ifname iface _c
+
+	ifnames="lo $($FW -q zone $($FW -q device "br-lan"))"
+	for _c in network_find_wan network_find_wan6; do
+		$_c iface 1
+		ifname=$($FW -q zone $($FW -q network "$iface"))
+		ifnames="${ifnames:+$ifnames }$ifname"
+	done
+	echo $ifnames | sed 's|\s|\n|g' | sort -u
+}
+
+gen_uhttpd_listen_ips() {
+	local regexp
+
+	regexp=$(find_op_ifnames | tr '\n' '|' | sed 's,^|*,,;s,|*$,,')
+	ip -o addr | grep -v "\bscope link\b" | sed -En -e "/^[0-9]+:\s*($regexp)\s/{s|^.*\binet6?\s+([^/]+)/.*|\1|p}" | sed '/:/{s|^|\[|;s|$|\]|}'
+}
+
 validate_section_domain() {
 	uci_load_validate $CONFIG_NAME $DOMAINS "$1" "$2" \
 		'enabled:bool:0' \
@@ -57,6 +76,17 @@ gen_eui64() {
 	else
 		printf "fe80::%x%s" $(( 0x$head & 0xfd )) "${mac:2:2}:${mac:4:2}ff:fe${mac:6:2}:${mac:8}"
 	fi
+}
+
+# set_uhttpd [host:port list]
+set_uhttpd() {
+	local listen_http="${1:-0.0.0.0:80 [::]:80}" _v
+
+	uci -q delete uhttpd.main.listen_http
+	for _v in $listen_http; do
+		uci add_list uhttpd.main.listen_http="$_v"
+	done
+	uci commit uhttpd
 }
 
 start_instance() {
@@ -113,10 +143,10 @@ start_service() {
 	local domain_list
 	config_foreach validate_section_domain "$DOMAINS" gen_hosts || return $?
 	sed -Ei "1a$domain_list" "$HOSTFILE"
-	/etc/init.d/dnsmasq reload
 
 	# HTTP
 	/etc/init.d/uhttpd stop
+	set_uhttpd "$(gen_uhttpd_listen_ips | sed 's|$|:80|')"
 	start_instance
 }
 
@@ -133,19 +163,26 @@ reload_service() {
 }
 
 service_started() {
+	# DNS
+	/etc/init.d/dnsmasq reload
+
 	# HTTP
 	/etc/init.d/uhttpd start
 }
 
 service_stopped() {
-	local tun_name
-	config_get tun_name global tun_name 'awoltun0'
-
 	# DNS
 	init_hosts
 	/etc/init.d/dnsmasq reload
 
+	# HTTP
+	set_uhttpd
+	/etc/init.d/uhttpd restart
+
 	# TUN
+	local tun_name
+	config_get tun_name global tun_name 'awoltun0'
+
 	ip link set "$tun_name" down 2>/dev/null
 	ip tuntap del mode tun name "$tun_name" 2>/dev/null
 }
