@@ -66,7 +66,7 @@ define Package/uci-$(PKG_NAME)
   CATEGORY:=Network
   SUBMENU:=Web Servers/Proxies
   TITLE:=alwaysonline uci metapackage
-  DEPENDS:=+alwaysonline +kmod-tun +ip-full +rgmac
+  DEPENDS:=+alwaysonline +kmod-tun +ip-full +rgmac +socat
   USERID:=alwaysonline:alwaysonline
 endef
 
