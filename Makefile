@@ -8,8 +8,9 @@ include $(TOPDIR)/rules.mk
 #go env
 
 PKG_NAME:=alwaysonline
-PKG_VERSION=1.2.0
-PKG_RELEASE:=20240731
+PKG_VERSION:=1.2.0
+PKG_RELEASE:=1
+UCI_VERSION:=20240731
 
 PKG_MAINTAINER:=muink <hukk1996@gmail.com>
 PKG_LICENSE:=MIT
@@ -68,6 +69,7 @@ define Package/uci-$(PKG_NAME)
   TITLE:=alwaysonline uci metapackage
   DEPENDS:=+alwaysonline +kmod-tun +ip-full +rgmac
   USERID:=alwaysonline:alwaysonline
+  VERSION:=$(UCI_VERSION)
 endef
 
 define Package/uci-$(PKG_NAME)/conffiles/Default
