@@ -1,11 +1,8 @@
+# SPDX-License-Identifier: MIT
 #
-# Copyright (C) 2023-2024 muink
-#
-# This is free software, licensed under the MIT License.
-# See /LICENSE for more information.
-#
+# Copyright (C) 2023-2024 Anya Lin <hukk1996@gmail.com>
+
 include $(TOPDIR)/rules.mk
-#go env
 
 PKG_NAME:=alwaysonline
 PKG_UPSTREAM_VERSION:=1.2.0
